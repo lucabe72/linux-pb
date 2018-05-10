@@ -1604,10 +1604,11 @@ select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags)
 	 * other hand, if it has a shorter deadline, we
 	 * try to make it stay here, it might be important.
 	 */
-	if (unlikely(dl_task(curr)) &&
+	if ((unlikely(dl_task(curr)) &&
 	    (curr->nr_cpus_allowed < 2 ||
 	     !dl_entity_preempt(&p->dl, &curr->dl)) &&
-	    (p->nr_cpus_allowed > 1)) {
+	    (p->nr_cpus_allowed > 1)) ||
+            READ_ONCE(rq->rd->rd_heterogeneous)) {
 		int target = find_later_rq(p);
 
 		if (target != -1 &&

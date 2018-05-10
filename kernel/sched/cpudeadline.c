@@ -14,6 +14,7 @@
 #include <linux/gfp.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include "sched.h"
 #include "cpudeadline.h"
 
 static inline int parent(int i)
@@ -113,6 +114,20 @@ static inline int cpudl_maximum(struct cpudl *cp)
 	return cp->elements[0].cpu;
 }
 
+static inline int dl_task_fit(const struct sched_dl_entity *dl_se, int cpu, u64 *c)
+{
+	u64 cap = ((arch_scale_cpu_capacity(NULL, cpu) * arch_scale_freq_capacity(cpu))) >> SCHED_CAPACITY_SHIFT;
+	s64 rel_deadline = dl_se->dl_deadline;
+	u64 rem_runtime  = dl_se->dl_runtime;
+
+	if (c) *c = cap;
+	if ((rel_deadline * cap) >> SCHED_CAPACITY_SHIFT < rem_runtime) {
+		return 0;
+	}
+
+	return 1;
+}
+
 /*
  * cpudl_find - find the best (later-dl) CPU in the system
  * @cp: the cpudl max-heap context
@@ -128,8 +143,21 @@ int cpudl_find(struct cpudl *cp, struct task_struct *p,
 
 	if (later_mask &&
 	    cpumask_and(later_mask, cp->free_cpus, &p->cpus_allowed)) {
-		return 1;
-	} else {
+		int cpu;
+
+		for_each_cpu(cpu, later_mask) {
+			u64 cap;
+
+			if (!dl_task_fit(&p->dl, cpu, &cap)) {
+				cpumask_clear_cpu(cpu, later_mask);
+			}
+		}
+
+		if (!cpumask_empty(later_mask)) {
+			return 1;
+		}
+	}
+	{
 		int best_cpu = cpudl_maximum(cp);
 		WARN_ON(best_cpu != -1 && !cpu_present(best_cpu));
 
