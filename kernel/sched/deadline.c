@@ -1585,6 +1585,7 @@ select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags)
 	rcu_read_lock();
 	curr = READ_ONCE(rq->curr); /* unlocked access */
 
+#ifndef arch_scale_cpu_capacity
 	/*
 	 * If we are dealing with a -deadline task, we must
 	 * decide where to wake it up.
@@ -1598,6 +1599,9 @@ select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags)
 	    (curr->nr_cpus_allowed < 2 ||
 	     !dl_entity_preempt(&p->dl, &curr->dl)) &&
 	    (p->nr_cpus_allowed > 1)) {
+#else
+	{
+#endif
 		int target = find_later_rq(p);
 
 		if (target != -1 &&
