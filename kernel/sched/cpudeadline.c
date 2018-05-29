@@ -117,9 +117,13 @@ static inline int cpudl_maximum(struct cpudl *cp)
 static inline int dl_task_fit(const struct sched_dl_entity *dl_se, int cpu, u64 *c)
 {
 	u64 cap = ((arch_scale_cpu_capacity(NULL, cpu) * arch_scale_freq_capacity(cpu))) >> SCHED_CAPACITY_SHIFT;
-	s64 rel_deadline = dl_se->dl_deadline;
-	u64 rem_runtime  = dl_se->dl_runtime;
+        s64 rel_deadline = dl_se->deadline - sched_clock_cpu(smp_processor_id());
+	u64 rem_runtime  = dl_se->runtime;
 
+	if (rel_deadline < 0) {
+		rel_deadline = dl_se->dl_deadline;
+		rem_runtime  = dl_se->dl_runtime;
+	}
 	if (c) *c = cap;
 	if ((rel_deadline * cap) >> SCHED_CAPACITY_SHIFT < rem_runtime) {
 		return 0;
