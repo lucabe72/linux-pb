@@ -147,7 +147,8 @@ int cpudl_find(struct cpudl *cp, struct task_struct *p,
 
 	if (later_mask &&
 	    cpumask_and(later_mask, cp->free_cpus, &p->cpus_allowed)) {
-		int cpu;
+		int cpu, max_cpu = -1;
+		u64 max_cap = 0;
 
 		for_each_cpu(cpu, later_mask) {
 			u64 cap;
@@ -155,7 +156,13 @@ int cpudl_find(struct cpudl *cp, struct task_struct *p,
 			if (!dl_task_fit(&p->dl, cpu, &cap)) {
 				cpumask_clear_cpu(cpu, later_mask);
 			}
+			if (cap > max_cap) {
+				max_cap = cap;
+				max_cpu = cpu;
+			}
 		}
+		if (cpumask_empty(later_mask) && max_cap)
+			cpumask_set_cpu(max_cpu, later_mask);
 
 		if (!cpumask_empty(later_mask)) {
 			return 1;
