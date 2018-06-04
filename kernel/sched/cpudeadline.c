@@ -144,17 +144,23 @@ int cpudl_find(struct cpudl *cp, struct task_struct *p,
 	       struct cpumask *later_mask)
 {
 	const struct sched_dl_entity *dl_se = &p->dl;
+	struct cpumask tmp_mask;
 
 	if (later_mask &&
-	    cpumask_and(later_mask, cp->free_cpus, &p->cpus_allowed)) {
+	    cpumask_and(&tmp_mask, cp->free_cpus, &p->cpus_allowed)) {
 		int cpu, max_cpu = -1;
-		u64 max_cap = 0;
+		u64 max_cap = 0, min_cap = SCHED_CAPACITY_SCALE * SCHED_CAPACITY_SCALE;
 
-		for_each_cpu(cpu, later_mask) {
+		cpumask_clear(later_mask);
+		for_each_cpu(cpu, &tmp_mask) {
 			u64 cap;
 
-			if (!dl_task_fit(&p->dl, cpu, &cap)) {
-				cpumask_clear_cpu(cpu, later_mask);
+			if (dl_task_fit(&p->dl, cpu, &cap) && (cap <= min_cap)) {
+				if (cap < min_cap) {
+					min_cap = cap;
+					cpumask_clear(later_mask);
+				}
+				cpumask_set_cpu(cpu, later_mask);
 			}
 			if (cap > max_cap) {
 				max_cap = cap;
