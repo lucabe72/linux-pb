@@ -5706,6 +5706,7 @@ void set_rq_online(struct rq *rq)
 			if (class->rq_online)
 				class->rq_online(rq);
 		}
+		rq->rd->rd_capacity += arch_scale_cpu_capacity(NULL, cpu_of(rq));
 	}
 }
 
@@ -5721,6 +5722,7 @@ void set_rq_offline(struct rq *rq)
 
 		cpumask_clear_cpu(rq->cpu, rq->rd->online);
 		rq->online = 0;
+		rq->rd->rd_capacity -= arch_scale_cpu_capacity(NULL, cpu_of(rq));
 	}
 }
 

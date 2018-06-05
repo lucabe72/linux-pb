@@ -35,6 +35,7 @@ DEFINE_PER_CPU(unsigned long, cpu_scale) = SCHED_CAPACITY_SCALE;
 
 void topology_set_cpu_scale(unsigned int cpu, unsigned long capacity)
 {
+	topology_update_cpu_capacity(cpu, per_cpu(cpu_scale, cpu), capacity);
 	per_cpu(cpu_scale, cpu) = capacity;
 }
 
