@@ -224,4 +224,6 @@ static inline int task_node(const struct task_struct *p)
 	return cpu_to_node(task_cpu(p));
 }
 
+void topology_update_cpu_capacity(unsigned int cpu, long unsigned int old, long unsigned int new);
+
 #endif /* _LINUX_SCHED_TOPOLOGY_H */
