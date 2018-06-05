@@ -1930,3 +1930,10 @@ match2:
 	mutex_unlock(&sched_domains_mutex);
 }
 
+void topology_update_cpu_capacity(unsigned int cpu, long unsigned int old, long unsigned int new)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+	rq->rd->rd_capacity -= old;
+	rq->rd->rd_capacity += new;
+}

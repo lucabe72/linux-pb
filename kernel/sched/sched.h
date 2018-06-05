@@ -267,10 +267,10 @@ void __dl_add(struct dl_bw *dl_b, u64 tsk_bw, int cpus)
 }
 
 static inline
-bool __dl_overflow(struct dl_bw *dl_b, int cpus, u64 old_bw, u64 new_bw)
+bool __dl_overflow(struct dl_bw *dl_b, unsigned long cap, u64 old_bw, u64 new_bw)
 {
 	return dl_b->bw != -1 &&
-	       dl_b->bw * cpus < dl_b->total_bw - old_bw + new_bw;
+	       (dl_b->bw * cap) >> SCHED_CAPACITY_SHIFT < dl_b->total_bw - old_bw + new_bw;
 }
 
 void dl_change_utilization(struct task_struct *p, u64 new_bw);
@@ -683,6 +683,8 @@ struct root_domain {
 	struct cpupri cpupri;
 
 	unsigned long max_cpu_capacity;
+
+	unsigned long rd_capacity;
 };
 
 extern struct root_domain def_root_domain;
