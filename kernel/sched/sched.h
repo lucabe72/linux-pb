@@ -685,6 +685,8 @@ struct root_domain {
 	unsigned long max_cpu_capacity;
 
 	unsigned long rd_capacity;
+
+	bool rd_heterogeneous;
 };
 
 extern struct root_domain def_root_domain;

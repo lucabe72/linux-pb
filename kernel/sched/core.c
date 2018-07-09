@@ -5707,6 +5707,9 @@ void set_rq_online(struct rq *rq)
 				class->rq_online(rq);
 		}
 		rq->rd->rd_capacity += arch_scale_cpu_capacity(NULL, cpu_of(rq));
+		if (arch_scale_cpu_capacity(NULL, cpu_of(rq) != rq->rd->max_cpu_capacity)) {
+			rq->rd->rd_heterogeneous = true;
+		}
 	}
 }
 
