@@ -576,6 +576,11 @@ static struct rq *dl_task_offline_migration(struct rq *rq, struct task_struct *p
 	return later_rq;
 }
 
+static inline bool heterogeneous(struct rq *rq)
+{
+	return READ_ONCE(rq->rd->rd_heterogeneous);
+}
+
 #else
 
 static inline
@@ -613,6 +618,11 @@ static inline void queue_push_tasks(struct rq *rq)
 
 static inline void queue_pull_task(struct rq *rq)
 {
+}
+
+static inline bool heterogeneous(struct rq *rq)
+{
+	return false;
 }
 #endif /* CONFIG_SMP */
 
@@ -1153,6 +1163,9 @@ u64 grub_reclaim(u64 delta, struct rq *rq, struct sched_dl_entity *dl_se)
 	return (delta * u_act) >> BW_SHIFT;
 }
 
+#ifdef CONFIG_SMP
+static int find_later_rq(struct task_struct *task);
+#endif
 /*
  * Update the current task's runtime statistics (provided it is still
  * a -deadline task and has not been removed from the dl_rq).
@@ -1229,8 +1242,27 @@ throttle:
 			dl_se->dl_overrun = 1;
 
 		__dequeue_task_dl(rq, curr, 0);
-		if (unlikely(dl_se->dl_boosted || !start_dl_timer(curr)))
+		if (unlikely(dl_se->dl_boosted || !start_dl_timer(curr))) {
 			enqueue_task_dl(rq, curr, ENQUEUE_REPLENISH);
+#ifdef CONFIG_SMP
+		} else if (dl_se->dl_adjust) {
+			int cpu = find_later_rq(curr);
+
+			if ((cpu != -1) && (cpu != rq->cpu)) {
+				struct rq *later_rq;
+				later_rq = cpu_rq(cpu);
+
+				double_lock_balance(rq, later_rq);
+				sub_running_bw(&curr->dl, &rq->dl);
+				sub_rq_bw(&curr->dl, &rq->dl);
+				set_task_cpu(curr, later_rq->cpu);
+				add_rq_bw(&curr->dl, &later_rq->dl);
+				add_running_bw(&curr->dl, &later_rq->dl);
+				double_unlock_balance(rq, later_rq);
+			}
+			dl_se->dl_adjust = 0;
+#endif
+		}
 
 		if (!is_leftmost(curr, &rq->dl))
 			resched_curr(rq);
@@ -1578,8 +1610,6 @@ static void yield_task_dl(struct rq *rq)
 }
 
 #ifdef CONFIG_SMP
-
-static int find_later_rq(struct task_struct *task);
 
 static int
 select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags)
@@ -2353,6 +2383,7 @@ static void switched_to_dl(struct rq *rq, struct task_struct *p)
 		else
 			resched_curr(rq);
 	}
+	if (heterogeneous(rq)) p->dl.dl_adjust = 1;
 }
 
 /*
