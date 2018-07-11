@@ -481,6 +481,7 @@ struct sched_dl_entity {
 	unsigned int			dl_yielded        : 1;
 	unsigned int			dl_non_contending : 1;
 	unsigned int			dl_overrun	  : 1;
+	unsigned int			dl_adjust	  : 1;
 
 	/*
 	 * Bandwidth enforcement timer. Each -deadline task has its
